@@ -1,0 +1,24 @@
+services:
+  db:
+    image: postgres
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - chat-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: chatdb
+      POSTGRES_PASSWORD: chatdb
+      POSTGRES_DB: chatdb
+    shm_size: 128mb
+    restart: unless-stopped
+
+  adminer:
+    image: adminer
+    container_name: adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+
+volumes:
+  chat-db:
