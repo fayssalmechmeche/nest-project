@@ -1,16 +1,5 @@
 import { defineStore } from "pinia";
-
-export interface UserState {
-  id: string;
-  username: string;
-  profileColor: string;
-}
-
-export interface OtherUser {
-  userId: string;
-  username: string;
-  profileColor: string;
-}
+import type { UserState, OtherUser } from "../types/interface";
 
 export const useUserStore = defineStore("user", {
   state: () => ({

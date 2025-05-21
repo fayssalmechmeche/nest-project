@@ -1,5 +1,12 @@
 import axios from "axios";
-
+import type {
+  Room,
+  CreateRoomDto,
+  User,
+  LoginDto,
+  RegisterDto,
+  UpdateUserDto,
+} from "../types/interface";
 export const api = axios.create({
   baseURL: "http://localhost:3000",
   headers: {
@@ -7,45 +14,6 @@ export const api = axios.create({
   },
   withCredentials: true,
 });
-
-export interface Room {
-  id: string;
-  name: string;
-  userCount: number;
-}
-
-export interface CreateRoomDto {
-  name: string;
-}
-
-export interface Message {
-  id: string;
-  content: string;
-  userId: string;
-  username: string;
-  profileColor: string;
-  createdAt: string;
-}
-
-export interface User {
-  id: string;
-  username: string;
-  profileColor: string;
-}
-
-export interface LoginDto {
-  username: string;
-  password: string;
-}
-
-export interface RegisterDto {
-  username: string;
-  password: string;
-}
-
-export interface UpdateUserDto {
-  profileColor?: string;
-}
 
 export const apiService = {
   async getRooms(): Promise<Room[]> {
