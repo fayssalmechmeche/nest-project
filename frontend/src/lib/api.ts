@@ -43,6 +43,10 @@ export interface RegisterDto {
   password: string;
 }
 
+export interface UpdateUserDto {
+  profileColor?: string;
+}
+
 export const apiService = {
   async getRooms(): Promise<Room[]> {
     const response = await api.get<Room[]>("/rooms");
@@ -75,6 +79,14 @@ export const apiService = {
 
   async register(registerDto: RegisterDto): Promise<User | null> {
     const response = await api.post<User>("/auth/register", registerDto);
+    return response.data;
+  },
+
+  async updateUserProfile(
+    userId: string,
+    updateData: UpdateUserDto
+  ): Promise<User | null> {
+    const response = await api.patch<User>(`/users/${userId}`, updateData);
     return response.data;
   },
 };

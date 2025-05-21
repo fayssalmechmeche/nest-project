@@ -1,3 +1,7 @@
+import { IsOptional, IsString } from 'class-validator';
+
 export class UpdateUsersDto {
-  profileColor: string;
+  @IsOptional()
+  @IsString()
+  profileColor?: string;
 }

@@ -4,7 +4,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { ConfigModule } from '@nestjs/config';
 import { RoomsModule } from './rooms/rooms.module';
-
+import { ChatModule } from './chat/chat.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -12,6 +12,7 @@ import { RoomsModule } from './rooms/rooms.module';
     PrismaModule,
     UsersModule,
     RoomsModule,
+    ChatModule,
   ],
   controllers: [],
   providers: [],
