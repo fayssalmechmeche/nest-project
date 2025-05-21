@@ -12,8 +12,13 @@ import { Server, Socket } from 'socket.io';
 interface RoomInfo {
   id: string;
   name: string;
-  users: { socketId: string; username: string }[];
-  messages: { user: string; content: string; timestamp: Date }[];
+  users: { socketId: string; username: string; profileColor?: string }[];
+  messages: {
+    user: string;
+    content: string;
+    timestamp: Date;
+    profileColor?: string;
+  }[];
 }
 
 @WebSocketGateway(3001, {
@@ -103,9 +108,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('joinRoom')
   async joinRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string; username: string },
+    @MessageBody()
+    data: { roomId: string; username: string; profileColor?: string },
   ) {
-    const { roomId, username } = data;
+    const { roomId, username, profileColor } = data;
 
     // Utiliser le nom d'utilisateur fourni ou celui stocké lors de la connexion
     const effectiveUsername =
@@ -148,8 +154,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       roomInfo.users.splice(existingUserIndex, 1);
     }
 
-    // Ajouter l'utilisateur à la room
-    roomInfo.users.push({ socketId: client.id, username: effectiveUsername });
+    // Ajouter l'utilisateur à la room avec sa couleur de profil
+    roomInfo.users.push({
+      socketId: client.id,
+      username: effectiveUsername,
+      profileColor, // Ajout de la couleur du profil
+    });
 
     console.log(
       `Utilisateur ${effectiveUsername} (${client.id}) a rejoint la room ${roomId}`,
@@ -164,6 +174,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       roomId,
       userId: client.id,
       username: effectiveUsername,
+      profileColor, // Ajout de la couleur du profil
       usersCount: roomInfo.users.length,
     });
 
@@ -171,6 +182,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const users = roomInfo.users.map((user) => ({
       userId: user.socketId,
       username: user.username,
+      profileColor: user.profileColor, // Inclure la couleur du profil
     }));
 
     // Retourner les informations de la room au client
@@ -180,7 +192,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       roomName: roomInfo.name,
       usersCount: roomInfo.users.length,
       messages: roomInfo.messages,
-      users, // Renvoyer la liste complète des utilisateurs
+      users, // Renvoyer la liste complète des utilisateurs avec leurs couleurs
     };
   }
 
@@ -238,9 +250,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('sendMessage')
   sendMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string; content: string; username: string },
+    @MessageBody()
+    data: {
+      roomId: string;
+      content: string;
+      username: string;
+      profileColor?: string;
+    },
   ) {
-    const { roomId, content } = data;
+    const { roomId, content, profileColor } = data;
 
     // Utiliser le nom d'utilisateur fourni ou celui stocké lors de la connexion
     const username =
@@ -254,11 +272,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       };
     }
 
-    // Créer le message
+    // Créer le message avec la couleur du profil
     const message = {
       user: username,
       content,
       timestamp: new Date(),
+      profileColor, // Inclure la couleur du profil dans le message
     };
 
     // Stocker le message dans la room

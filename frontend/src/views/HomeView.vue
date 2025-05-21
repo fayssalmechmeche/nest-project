@@ -82,20 +82,16 @@
                     <div class="space-y-4">
                         <div v-for="(message, index) in messages" :key="index" class="flex"
                             :class="message.user === currentUser.username ? 'justify-end' : 'justify-start'">
-                            <div class="max-w-xs md:max-w-md rounded-lg px-4 py-2 shadow" :style="message.user === currentUser.username ?
-                                { backgroundColor: currentUser.profileColor, color: getContrastColor(currentUser.profileColor) } :
-                                {}" :class="message.user === currentUser.username ?
-                                    '' :
-                                    'bg-white text-gray-800 border'">
+                            <div class="max-w-xs md:max-w-md rounded-lg px-4 py-2 shadow"
+                                :style="getMessageStyle(message)"
+                                :class="message.user === currentUser.username ? '' : 'border'">
                                 <div v-if="message.user !== currentUser.username" class="flex items-center mb-1">
-                                    <div class="w-2 h-2 rounded-full mr-2 bg-blue-500" />
+                                    <div class="w-2 h-2 rounded-full mr-2"
+                                        :style="{ backgroundColor: message.profileColor || '#3B82F6' }" />
                                     <span class="font-medium text-sm">{{ message.user }}</span>
                                 </div>
                                 <p>{{ message.content }}</p>
-                                <div class="text-xs mt-1 text-right"
-                                    :class="message.user === currentUser.username ? '' : 'text-gray-500'" :style="message.user === currentUser.username ?
-                                        { color: getContrastColor(currentUser.profileColor, true) } :
-                                        {}">
+                                <div class="text-xs mt-1 text-right" :style="getMessageTimeStyle(message)">
                                     {{ formatMessageTime(message.timestamp) }}
                                 </div>
                             </div>
@@ -205,6 +201,7 @@ interface ChatMessage {
     user: string;
     content: string;
     timestamp: Date;
+    profileColor?: string; // Ajout de la couleur du profil dans l'interface
 }
 
 interface RoomData {
@@ -270,6 +267,44 @@ export default defineComponent({
                 };
                 // Synchroniser la couleur sélectionnée avec celle du profil
                 selectedColor.value = currentUser.value.profileColor;
+            }
+        };
+
+        const getMessageStyle = (message: ChatMessage) => {
+            if (message.user === currentUser.value.username) {
+                // Si c'est mon message, utiliser ma couleur de profil
+                return {
+                    backgroundColor: currentUser.value.profileColor,
+                    color: getContrastColor(currentUser.value.profileColor)
+                };
+            } else if (message.profileColor) {
+                // Si c'est le message d'un autre utilisateur avec une couleur définie
+                return {
+                    backgroundColor: message.profileColor,
+                    color: getContrastColor(message.profileColor)
+                };
+            } else {
+                // Message d'un autre utilisateur sans couleur définie (fallback)
+                return {
+                    backgroundColor: 'white',
+                    color: 'black'
+                };
+            }
+        };
+
+        const getMessageTimeStyle = (message: ChatMessage) => {
+            if (message.user === currentUser.value.username) {
+                return {
+                    color: getContrastColor(currentUser.value.profileColor, true)
+                };
+            } else if (message.profileColor) {
+                return {
+                    color: getContrastColor(message.profileColor, true)
+                };
+            } else {
+                return {
+                    color: 'rgba(0, 0, 0, 0.6)'
+                };
             }
         };
 
@@ -360,11 +395,13 @@ export default defineComponent({
         // Connexion au serveur Socket.IO avec authentification
         const connectSocket = () => {
             socket.value = io('http://localhost:3001', {
-                withCredentials: true, // Pour envoyer les cookies avec la connexion socket
+                withCredentials: true,
                 auth: {
-                    username: currentUser.value.username
+                    username: currentUser.value.username,
+                    profileColor: currentUser.value.profileColor // Ajouter la couleur du profil
                 }
             });
+
 
             // Écouter les événements du serveur
             if (socket.value) {
@@ -501,14 +538,15 @@ export default defineComponent({
             if (socket.value) {
                 socket.value.emit('joinRoom', {
                     roomId: room.id,
-                    username: currentUser.value.username
+                    username: currentUser.value.username,
+                    profileColor: currentUser.value.profileColor // Ajouter la couleur du profil
                 }, (response: {
                     success: boolean,
                     roomId: string,
                     roomName: string,
                     usersCount: number,
                     messages: ChatMessage[],
-                    users?: { userId: string, username: string }[]
+                    users?: { userId: string, username: string, profileColor?: string }[]
                 }) => {
                     if (response.success) {
                         activeRoom.value = {
@@ -563,7 +601,8 @@ export default defineComponent({
                 socket.value.emit('sendMessage', {
                     roomId: activeRoomId.value,
                     content: messageInput.value,
-                    username: currentUser.value.username
+                    username: currentUser.value.username,
+                    profileColor: currentUser.value.profileColor
                 });
 
                 messageInput.value = '';
@@ -592,7 +631,9 @@ export default defineComponent({
             showProfileSettings,
             selectedColor,
             getContrastColor,
-            saveProfileSettings
+            saveProfileSettings,
+            getMessageStyle,
+            getMessageTimeStyle
         };
     }
 });
