@@ -6,7 +6,6 @@
                 <div class="flex items-center cursor-pointer" @click="$emit('showProfile')">
                     <user-icon :size="20" />
                     <span class="ml-2">{{ currentUser.username }}</span>
-                    <div class="w-3 h-3 rounded-full bg-green-400 ml-2" title="Online" />
                     <div class="w-4 h-4 rounded-full ml-2" :style="{ backgroundColor: currentUser.profileColor }"
                         title="Couleur de profil">
                     </div>
