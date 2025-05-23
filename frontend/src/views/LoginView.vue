@@ -20,6 +20,7 @@ const login = async () => {
             const user = await apiService.getCurrentUser();
             const userStore = useUserStore();
             userStore.setUser(user);
+            console.log('user', user);
             await router.push('/home');
         } else {
             error.value = 'Erreur de connexion';
@@ -60,7 +61,7 @@ const register = () => {
                 <button type="button"
                     class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     @click="login">
-                    Se connecter
+                    Connexion
                 </button>
             </form>
 

@@ -50,7 +50,7 @@ const {
 } = useRooms();
 
 const {
-    connectSocket,
+    connect,
     joinRoom,
     leaveRoom,
     createRoom,
@@ -69,7 +69,7 @@ onMounted(async () => {
 });
 
 const setupSocket = () => {
-    connectSocket(currentUser);
+    connect(currentUser.username);
 
     // Écouter les événements socket
     onNewMessage((data) => {

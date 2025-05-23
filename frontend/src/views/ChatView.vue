@@ -1,5 +1,8 @@
 <template>
     <div class="flex w-full h-full">
+        <!-- Sidebar musicale -->
+        <MusicSidebar :active-room-id="activeRoom?.id ?? ''" />
+
         <!-- Chat principal -->
         <div class="flex-1 flex flex-col">
             <div class="p-4 bg-indigo-600 text-white flex justify-between items-center">
@@ -50,6 +53,7 @@ import { ref, computed, nextTick, onMounted, watch } from 'vue';
 import { SettingsIcon, LogOutIcon, SendIcon, UsersIcon } from 'lucide-vue-next';
 import ChatMessage from '../components/ChatMessage.vue';
 import UserSidebar from '../components/UserSidebar.vue';
+import MusicSidebar from '../components/MusicSidebar.vue';
 import { getContrastColor } from '../utils/colors';
 import type { ChatMessage as ChatMessageType, RoomData, UserData, CurrentUser } from '../types/interface';
 

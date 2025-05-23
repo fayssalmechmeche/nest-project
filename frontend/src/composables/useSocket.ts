@@ -1,50 +1,72 @@
+// composables/useSocket.ts
 import { ref, onUnmounted } from "vue";
 import { io, Socket } from "socket.io-client";
-import type {
-  ChatMessage,
-  CurrentUser,
-  SocketJoinRoomResponse,
-  SocketCreateRoomResponse,
-  SocketGetRoomsResponse,
-} from "../types/interface";
+
+interface Track {
+  id: string;
+  title: string;
+  previewUrl: string;
+  artwork: string;
+  duration: number;
+  addedBy: string;
+}
+
+interface MusicState {
+  currentTrack: Track | null;
+  currentTrackIndex: number | undefined;
+  isPlaying: boolean;
+  currentTime: number;
+  queue: Track[];
+}
+
+interface ChatMessage {
+  user: string;
+  content: string;
+  timestamp: Date;
+  profileColor?: string;
+}
+
+interface UserData {
+  userId: string;
+  username: string;
+  profileColor?: string;
+}
+
+interface RoomData {
+  id: string;
+  name: string;
+  usersCount: number;
+}
+
+const socket = ref<Socket | null>(null);
+const isConnected = ref(false);
 
 export function useSocket() {
-  const socket = ref<Socket | null>(null);
-  const isConnected = ref(false);
+  const connect = (username: string) => {
+    if (socket.value?.connected) return;
 
-  const connectSocket = (currentUser: CurrentUser) => {
     socket.value = io("http://localhost:3001", {
-      withCredentials: true,
       auth: {
-        username: currentUser.username,
-        profileColor: currentUser.profileColor,
+        username: username,
       },
     });
 
     socket.value.on("connect", () => {
-      console.log("Connecté au serveur Socket.IO");
       isConnected.value = true;
-
-      // Mettre à jour les informations d'authentification
-      if (
-        socket.value &&
-        "auth" in socket.value &&
-        typeof socket.value.auth === "object"
-      ) {
-        socket.value.auth.username = currentUser.username;
-        socket.value.auth.profileColor = currentUser.profileColor;
-      }
+      console.log("Connecté au serveur WebSocket");
     });
 
     socket.value.on("disconnect", () => {
-      console.log("Déconnecté du serveur Socket.IO");
       isConnected.value = false;
+      console.log("Déconnecté du serveur WebSocket");
     });
 
-    return socket.value;
+    socket.value.on("connect_error", (error) => {
+      console.error("Erreur de connexion:", error);
+    });
   };
 
-  const disconnectSocket = () => {
+  const disconnect = () => {
     if (socket.value) {
       socket.value.disconnect();
       socket.value = null;
@@ -52,67 +74,51 @@ export function useSocket() {
     }
   };
 
+  // === MÉTHODES CHAT ===
+  const createRoom = (roomName: string): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!socket.value) {
+        reject(new Error("Socket non connecté"));
+        return;
+      }
+
+      socket.value.emit("createRoom", { roomName }, (response: any) => {
+        resolve(response);
+      });
+    });
+  };
+
   const joinRoom = (
     roomId: string,
     username: string,
-    profileColor: string
-  ): Promise<SocketJoinRoomResponse> => {
-    return new Promise((resolve) => {
-      if (socket.value) {
-        socket.value.emit(
-          "joinRoom",
-          {
-            roomId,
-            username,
-            profileColor,
-          },
-          (response: SocketJoinRoomResponse) => {
-            resolve(response);
-          }
-        );
+    profileColor?: string
+  ): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!socket.value) {
+        reject(new Error("Socket non connecté"));
+        return;
       }
+
+      socket.value.emit(
+        "joinRoom",
+        { roomId, username, profileColor },
+        (response: any) => {
+          resolve(response);
+        }
+      );
     });
   };
 
-  const leaveRoom = (roomId: string): Promise<{ success: boolean }> => {
-    return new Promise((resolve) => {
-      if (socket.value) {
-        socket.value.emit(
-          "leaveRoom",
-          { roomId },
-          (response: { success: boolean }) => {
-            resolve(response);
-          }
-        );
+  const leaveRoom = (roomId: string): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!socket.value) {
+        reject(new Error("Socket non connecté"));
+        return;
       }
-    });
-  };
 
-  const createRoom = (roomName: string): Promise<SocketCreateRoomResponse> => {
-    return new Promise((resolve) => {
-      if (socket.value) {
-        socket.value.emit(
-          "createRoom",
-          { roomName },
-          (response: SocketCreateRoomResponse) => {
-            resolve(response);
-          }
-        );
-      }
-    });
-  };
-
-  const getRooms = (): Promise<SocketGetRoomsResponse> => {
-    return new Promise((resolve) => {
-      if (socket.value) {
-        socket.value.emit(
-          "getRooms",
-          {},
-          (response: SocketGetRoomsResponse) => {
-            resolve(response);
-          }
-        );
-      }
+      socket.value.emit("leaveRoom", { roomId }, (response: any) => {
+        resolve(response);
+      });
     });
   };
 
@@ -120,24 +126,141 @@ export function useSocket() {
     roomId: string,
     content: string,
     username: string,
-    profileColor: string
-  ) => {
-    if (socket.value) {
-      socket.value.emit("sendMessage", {
-        roomId,
-        content,
-        username,
-        profileColor,
-      });
-    }
+    profileColor?: string
+  ): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!socket.value) {
+        reject(new Error("Socket non connecté"));
+        return;
+      }
+
+      socket.value.emit(
+        "sendMessage",
+        { roomId, content, username, profileColor },
+        (response: any) => {
+          resolve(response);
+        }
+      );
+    });
   };
 
+  const getRooms = (): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!socket.value) {
+        reject(new Error("Socket non connecté"));
+        return;
+      }
+
+      socket.value.emit("getRooms", {}, (response: any) => {
+        resolve(response);
+      });
+    });
+  };
+
+  // === MÉTHODES MUSICALES ===
+  const addToQueue = (roomId: string, track: any): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!socket.value) {
+        reject(new Error("Socket non connecté"));
+        return;
+      }
+
+      socket.value.emit("addToQueue", { roomId, track }, (response: any) => {
+        resolve(response);
+      });
+    });
+  };
+
+  const playPause = (roomId: string): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!socket.value) {
+        reject(new Error("Socket non connecté"));
+        return;
+      }
+
+      socket.value.emit("playPause", { roomId }, (response: any) => {
+        resolve(response);
+      });
+    });
+  };
+
+  const nextTrack = (roomId: string): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!socket.value) {
+        reject(new Error("Socket non connecté"));
+        return;
+      }
+
+      socket.value.emit("nextTrack", { roomId }, (response: any) => {
+        resolve(response);
+      });
+    });
+  };
+
+  const previousTrack = (roomId: string): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!socket.value) {
+        reject(new Error("Socket non connecté"));
+        return;
+      }
+
+      socket.value.emit("previousTrack", { roomId }, (response: any) => {
+        resolve(response);
+      });
+    });
+  };
+
+  const seekTo = (roomId: string, time: number): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!socket.value) {
+        reject(new Error("Socket non connecté"));
+        return;
+      }
+
+      socket.value.emit("seekTo", { roomId, time }, (response: any) => {
+        resolve(response);
+      });
+    });
+  };
+
+  const removeFromQueue = (
+    roomId: string,
+    trackIndex: number
+  ): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!socket.value) {
+        reject(new Error("Socket non connecté"));
+        return;
+      }
+
+      socket.value.emit(
+        "removeFromQueue",
+        { roomId, trackIndex },
+        (response: any) => {
+          resolve(response);
+        }
+      );
+    });
+  };
+
+  const getMusicState = (roomId: string): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!socket.value) {
+        reject(new Error("Socket non connecté"));
+        return;
+      }
+
+      socket.value.emit("getMusicState", { roomId }, (response: any) => {
+        resolve(response);
+      });
+    });
+  };
+
+  // === ÉCOUTEURS D'ÉVÉNEMENTS ===
   const onNewMessage = (
     callback: (data: { roomId: string; message: ChatMessage }) => void
   ) => {
-    if (socket.value) {
-      socket.value.on("newMessage", callback);
-    }
+    socket.value?.on("newMessage", callback);
   };
 
   const onUserJoined = (
@@ -145,42 +268,86 @@ export function useSocket() {
       roomId: string;
       userId: string;
       username: string;
+      profileColor?: string;
       usersCount: number;
     }) => void
   ) => {
-    if (socket.value) {
-      socket.value.on("userJoined", callback);
-    }
+    socket.value?.on("userJoined", callback);
   };
 
   const onUserLeft = (
     callback: (data: {
       roomId: string;
       userId: string;
+      username: string;
       usersCount: number;
     }) => void
   ) => {
-    if (socket.value) {
-      socket.value.on("userLeft", callback);
+    socket.value?.on("userLeft", callback);
+  };
+
+  const onMusicStateChanged = (callback: (data: MusicState) => void) => {
+    socket.value?.on("musicStateChanged", callback);
+  };
+
+  const onQueueUpdated = (
+    callback: (data: { queue: Track[]; currentTrackIndex?: number }) => void
+  ) => {
+    socket.value?.on("queueUpdated", callback);
+  };
+
+  // === NETTOYAGE ===
+  const removeAllListeners = () => {
+    socket.value?.removeAllListeners();
+  };
+
+  const removeListener = (event: string, callback?: Function) => {
+    if (callback) {
+      socket.value?.off(event, callback as (...args: any[]) => void);
+    } else {
+      socket.value?.off(event);
     }
   };
 
+  // Nettoyage automatique
   onUnmounted(() => {
-    disconnectSocket();
+    disconnect();
   });
 
   return {
-    socket,
+    socket: socket.value,
     isConnected,
-    connectSocket,
-    disconnectSocket,
+    connect,
+    disconnect,
+
+    // Chat methods
+    createRoom,
     joinRoom,
     leaveRoom,
-    createRoom,
-    getRooms,
     sendMessage,
+    getRooms,
+
+    // Music methods
+    addToQueue,
+    playPause,
+    nextTrack,
+    previousTrack,
+    seekTo,
+    removeFromQueue,
+    getMusicState,
+
+    // Event listeners
     onNewMessage,
     onUserJoined,
     onUserLeft,
+    onMusicStateChanged,
+    onQueueUpdated,
+
+    // Cleanup
+    removeAllListeners,
+    removeListener,
   };
 }
+
+// Export pour utilisation globale
+export { socket, isConnected };
