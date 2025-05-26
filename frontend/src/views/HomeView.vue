@@ -58,19 +58,34 @@ const {
     sendMessage,
     onNewMessage,
     onUserJoined,
-    onUserLeft
+    onUserLeft,
+    isConnected // Ajoutez cette méthode si elle n'existe pas dans useSocket
 } = useSocket();
 
 // Initialisation
 onMounted(async () => {
     await initializeUser();
-    setupSocket();
+    await ensureSocketConnection();
     await loadRooms(getRooms);
 });
 
-const setupSocket = () => {
-    connect(currentUser.username);
+// Fonction pour s'assurer que la socket est connectée
+const ensureSocketConnection = async () => {
+    try {
+        // Vérifier si la socket est déjà connectée
+        if (!isConnected.value) {
+            connect(currentUser.username);
+            setupSocketListeners();
+        }
+    } catch (error) {
+        console.error('Erreur lors de la connexion socket:', error);
+        // Réessayer la connexion
+        connect(currentUser.username);
+        setupSocketListeners();
+    }
+};
 
+const setupSocketListeners = () => {
     // Écouter les événements socket
     onNewMessage((data) => {
         if (data.roomId === activeRoomId.value) {
@@ -96,6 +111,9 @@ const setupSocket = () => {
 // Gestion des rooms
 const handleCreateRoom = async (roomName: string) => {
     try {
+        // S'assurer que la socket est connectée avant de créer une room
+        await ensureSocketConnection();
+
         const response = await createRoom(roomName);
         if (response.success) {
             const newRoom: RoomData = {
@@ -114,6 +132,9 @@ const handleCreateRoom = async (roomName: string) => {
 
 const handleJoinRoom = async (room: RoomData) => {
     try {
+        // S'assurer que la socket est connectée avant de rejoindre une room
+        await ensureSocketConnection();
+
         const response = await joinRoom(
             room.id,
             currentUser.username,
@@ -126,6 +147,30 @@ const handleJoinRoom = async (room: RoomData) => {
         }
     } catch (error) {
         console.error('Erreur lors de la connexion à la room:', error);
+
+        // En cas d'erreur, réessayer une fois après reconnexion
+        try {
+            console.log('Tentative de reconnexion...');
+            connect(currentUser.username);
+            setupSocketListeners();
+
+            // Attendre un peu pour que la connexion s'établisse
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            const retryResponse = await joinRoom(
+                room.id,
+                currentUser.username,
+                currentUser.profileColor
+            );
+
+            if (retryResponse.success) {
+                setActiveRoom(retryResponse);
+                currentView.value = 'chat';
+            }
+        } catch (retryError) {
+            console.error('Erreur lors de la tentative de reconnexion:', retryError);
+            alert('Impossible de rejoindre la room. Veuillez réessayer.');
+        }
     }
 };
 
@@ -143,18 +188,30 @@ const handleLeaveRoom = async () => {
         }
     } catch (error) {
         console.error('Erreur lors de la déconnexion de la room:', error);
+        // Même en cas d'erreur, on peut revenir à la liste des rooms
+        clearActiveRoom();
+        currentView.value = 'rooms';
+        await loadRooms(getRooms);
     }
 };
 
 // Gestion des messages
-const handleSendMessage = (content: string) => {
+const handleSendMessage = async (content: string) => {
     if (activeRoomId.value) {
-        sendMessage(
-            activeRoomId.value,
-            content,
-            currentUser.username,
-            currentUser.profileColor
-        );
+        try {
+            // S'assurer que la socket est connectée avant d'envoyer un message
+            await ensureSocketConnection();
+
+            sendMessage(
+                activeRoomId.value,
+                content,
+                currentUser.username,
+                currentUser.profileColor
+            );
+        } catch (error) {
+            console.error('Erreur lors de l\'envoi du message:', error);
+            alert('Impossible d\'envoyer le message. Connexion perdue.');
+        }
     }
 };
 
