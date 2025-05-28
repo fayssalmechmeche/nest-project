@@ -29,8 +29,8 @@ interface RoomInfo {
   }[];
   currentTrackIndex?: number;
   isPlaying: boolean;
-  currentTime: number; // Position actuelle en secondes
-  lastUpdateTime: number; // Timestamp de la dernière mise à jour
+  currentTime: number;
+  lastUpdateTime: number;
 }
 
 @WebSocketGateway(3001, {
@@ -163,7 +163,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       profileColor: user.profileColor,
     }));
 
-    // Synchroniser l'état musical pour le nouvel utilisateur
     const musicState = this.getCurrentMusicState(roomInfo);
 
     return {
@@ -173,7 +172,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       usersCount: roomInfo.users.length,
       messages: roomInfo.messages,
       users,
-      musicState, // Inclure l'état musical actuel
+      musicState,
     };
   }
 
@@ -281,8 +280,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { success: true, rooms: roomsList };
   }
 
-  // === NOUVELLES MÉTHODES MUSICALES SYNCHRONISÉES ===
-
   @SubscribeMessage('addToQueue')
   addToQueue(
     @ConnectedSocket() client: Socket,
@@ -296,20 +293,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       title: data.track.title as string,
       previewUrl: data.track.previewUrl as string,
       artwork: data.track.artwork as string,
-      duration: 30, // durée par défaut iTunes Preview
+      duration: 30,
       addedBy: this.usernames.get(client.id) || 'Anonyme',
     };
 
     room.musicQueue.push(trackWithId);
 
-    // Si aucune piste n'est en cours, démarrer automatiquement
     if (room.currentTrackIndex === undefined && room.musicQueue.length === 1) {
       room.currentTrackIndex = 0;
       room.isPlaying = true;
       room.currentTime = 0;
       room.lastUpdateTime = Date.now();
 
-      // Notifier tous les clients qu'une nouvelle piste commence
       this.server.to(data.roomId).emit('musicStateChanged', {
         currentTrack: room.musicQueue[room.currentTrackIndex],
         currentTrackIndex: room.currentTrackIndex,
@@ -318,7 +313,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         queue: room.musicQueue,
       });
     } else {
-      // Juste mettre à jour la queue
       this.server.to(data.roomId).emit('queueUpdated', {
         queue: room.musicQueue,
       });
@@ -337,7 +331,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { success: false };
     }
 
-    // Calculer la position actuelle si on était en train de jouer
     if (room.isPlaying) {
       const elapsed = (Date.now() - room.lastUpdateTime) / 1000;
       room.currentTime = Math.min(
@@ -386,7 +379,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       return { success: true };
     } else {
-      // Fin de la queue
       room.currentTrackIndex = undefined;
       room.isPlaying = false;
       room.currentTime = 0;
@@ -476,7 +468,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { success: false };
     }
 
-    // Ne pas permettre de supprimer la piste en cours de lecture
     if (room.currentTrackIndex === data.trackIndex) {
       return {
         success: false,
@@ -486,7 +477,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     room.musicQueue.splice(data.trackIndex, 1);
 
-    // Ajuster l'index de la piste actuelle si nécessaire
     if (
       room.currentTrackIndex !== undefined &&
       room.currentTrackIndex > data.trackIndex
@@ -513,11 +503,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     };
   }
 
-  // Méthode utilitaire pour calculer l'état musical actuel
   private getCurrentMusicState(room: RoomInfo) {
     let currentTime = room.currentTime;
 
-    // Si une piste est en cours de lecture, calculer la position actuelle
     if (room.isPlaying && room.currentTrackIndex !== undefined) {
       const elapsed = (Date.now() - room.lastUpdateTime) / 1000;
       currentTime = Math.min(
@@ -525,9 +513,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         room.musicQueue[room.currentTrackIndex]?.duration || 0,
       );
 
-      // Vérifier si la piste est terminée
       if (currentTime >= room.musicQueue[room.currentTrackIndex]?.duration) {
-        // Auto-passer à la piste suivante
         this.autoNextTrack(room);
       }
     }
@@ -544,7 +530,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     };
   }
 
-  // Passage automatique à la piste suivante
   private autoNextTrack(room: RoomInfo) {
     if (room.currentTrackIndex === undefined) return;
 
@@ -559,7 +544,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       room.currentTime = 0;
     }
 
-    // Notifier tous les clients
     this.server.to(room.id).emit('musicStateChanged', {
       currentTrack:
         room.currentTrackIndex !== undefined

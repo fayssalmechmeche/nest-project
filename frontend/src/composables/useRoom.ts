@@ -27,7 +27,6 @@ export function useRooms() {
         }
       }
 
-      // Fallback sur l'API REST
       const apiRooms = await apiService.getRooms();
       rooms.value = apiRooms.map((room) => ({
         id: room.id,
@@ -53,7 +52,6 @@ export function useRooms() {
     activeRoomUsersCount.value = response.usersCount;
     messages.value = response.messages || [];
 
-    // Initialiser la liste des utilisateurs
     if (response.users && Array.isArray(response.users)) {
       connectedUsers.value = response.users;
     } else {
@@ -97,7 +95,6 @@ export function useRooms() {
   };
 
   return {
-    // State
     rooms,
     loading,
     activeRoom,
@@ -105,8 +102,6 @@ export function useRooms() {
     activeRoomUsersCount,
     messages,
     connectedUsers,
-
-    // Actions
     loadRooms,
     setActiveRoom,
     clearActiveRoom,

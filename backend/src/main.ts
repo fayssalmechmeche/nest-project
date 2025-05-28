@@ -20,7 +20,6 @@ async function bootstrap() {
     exposedHeaders: ['Content-Range', 'X-Total-Count'],
   });
 
-  // Enable cookie parser
   app.use(cookieParser());
   await app.listen(process.env.PORT ?? 3000);
 }

@@ -97,7 +97,6 @@ const scrollToBottom = () => {
     });
 };
 
-// Faire défiler vers le bas quand de nouveaux messages arrivent
 watch(() => props.messages.length, () => {
     scrollToBottom();
 });

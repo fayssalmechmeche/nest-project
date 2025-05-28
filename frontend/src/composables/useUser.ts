@@ -42,7 +42,6 @@ export function useUser() {
       if (currentUser.id) {
         await apiService.updateUserProfile(currentUser.id, profileData);
 
-        // Mettre à jour le store
         if (userStore.user) {
           const updatedUser = {
             ...userStore.user,
@@ -58,7 +57,6 @@ export function useUser() {
     }
   };
 
-  // Observer les changements de l'utilisateur dans le store
   watch(
     () => userStore.user,
     (newUser) => {

@@ -1,4 +1,3 @@
-// composables/useSocket.ts
 import { ref, onUnmounted } from "vue";
 import { io, Socket } from "socket.io-client";
 
@@ -24,18 +23,6 @@ interface ChatMessage {
   content: string;
   timestamp: Date;
   profileColor?: string;
-}
-
-interface UserData {
-  userId: string;
-  username: string;
-  profileColor?: string;
-}
-
-interface RoomData {
-  id: string;
-  name: string;
-  usersCount: number;
 }
 
 const socket = ref<Socket | null>(null);
@@ -74,7 +61,6 @@ export function useSocket() {
     }
   };
 
-  // === MÉTHODES CHAT ===
   const createRoom = (roomName: string): Promise<any> => {
     return new Promise((resolve, reject) => {
       if (!socket.value) {
@@ -157,7 +143,6 @@ export function useSocket() {
     });
   };
 
-  // === MÉTHODES MUSICALES ===
   const addToQueue = (roomId: string, track: any): Promise<any> => {
     return new Promise((resolve, reject) => {
       if (!socket.value) {
@@ -256,7 +241,6 @@ export function useSocket() {
     });
   };
 
-  // === ÉCOUTEURS D'ÉVÉNEMENTS ===
   const onNewMessage = (
     callback: (data: { roomId: string; message: ChatMessage }) => void
   ) => {
@@ -296,7 +280,6 @@ export function useSocket() {
     socket.value?.on("queueUpdated", callback);
   };
 
-  // === NETTOYAGE ===
   const removeAllListeners = () => {
     socket.value?.removeAllListeners();
   };
@@ -309,7 +292,6 @@ export function useSocket() {
     }
   };
 
-  // Nettoyage automatique
   onUnmounted(() => {
     disconnect();
   });
@@ -320,14 +302,12 @@ export function useSocket() {
     connect,
     disconnect,
 
-    // Chat methods
     createRoom,
     joinRoom,
     leaveRoom,
     sendMessage,
     getRooms,
 
-    // Music methods
     addToQueue,
     playPause,
     nextTrack,
@@ -336,18 +316,15 @@ export function useSocket() {
     removeFromQueue,
     getMusicState,
 
-    // Event listeners
     onNewMessage,
     onUserJoined,
     onUserLeft,
     onMusicStateChanged,
     onQueueUpdated,
 
-    // Cleanup
     removeAllListeners,
     removeListener,
   };
 }
 
-// Export pour utilisation globale
 export { socket, isConnected };

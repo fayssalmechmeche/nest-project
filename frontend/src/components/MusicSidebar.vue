@@ -143,7 +143,6 @@ const volume = ref(50);
 const currentAudio = ref<HTMLAudioElement | null>(null);
 const progressUpdateInterval = ref<number | null>(null);
 
-// État musical synchronisé
 const musicState = ref<MusicState>({
     currentTrack: null,
     currentTrackIndex: undefined,
@@ -152,13 +151,11 @@ const musicState = ref<MusicState>({
     queue: []
 });
 
-// Calcul du pourcentage de progression
 const progressPercentage = computed(() => {
     if (!musicState.value.currentTrack) return 0;
     return Math.min(100, (musicState.value.currentTime / musicState.value.currentTrack.duration) * 100);
 });
 
-// Recherche de musique iTunes
 const searchMusic = async () => {
     if (!searchTerm.value.trim()) return;
 
@@ -169,7 +166,7 @@ const searchMusic = async () => {
         const data = await response.json();
 
         searchResults.value = data.results
-            .filter((track: any) => track.previewUrl) // Filtrer seulement les pistes avec preview
+            .filter((track: any) => track.previewUrl)
             .map((track: any) => ({
                 id: track.trackId.toString(),
                 title: `${track.artistName} - ${track.trackName}`,
@@ -181,7 +178,6 @@ const searchMusic = async () => {
     }
 };
 
-// Actions musicales avec vérifications
 const addToQueue = async (track: any) => {
     if (!props.activeRoomId || !isConnected.value) {
         console.warn("Pas de room active ou socket non connecté");
@@ -193,7 +189,6 @@ const addToQueue = async (track: any) => {
         console.log("Réponse addToQueue:", response);
 
         if (response.success) {
-            // Effacer les résultats de recherche après ajout
             searchResults.value = [];
             searchTerm.value = "";
         }
@@ -246,7 +241,6 @@ const removeFromQueue = async (index: number) => {
     }
 };
 
-// Gestion du clic sur la barre de progression
 const handleProgressClick = (event: MouseEvent) => {
     if (!musicState.value.currentTrack || !props.activeRoomId) return;
 
@@ -258,13 +252,12 @@ const handleProgressClick = (event: MouseEvent) => {
     socketComposable.seekTo(props.activeRoomId, newTime);
 };
 
-// Gestion de l'audio local
 const playCurrentTrack = () => {
     if (!musicState.value.currentTrack) return;
 
     console.log("Tentative de lecture:", musicState.value.currentTrack.title);
 
-    // Arrêter l'audio précédent
+
     if (currentAudio.value) {
         currentAudio.value.pause();
         currentAudio.value.removeEventListener('loadeddata', () => {
@@ -291,11 +284,10 @@ const playCurrentTrack = () => {
         const audio = new Audio();
         audio.src = musicState.value.currentTrack.previewUrl;
         audio.volume = volume.value / 100;
-        audio.crossOrigin = "anonymous"; // Pour éviter les problèmes CORS
+        audio.crossOrigin = "anonymous";
 
         currentAudio.value = audio;
 
-        // Event listeners
         const onAudioLoaded = () => {
             console.log("Audio chargé, durée:", audio.duration);
             audio.currentTime = musicState.value.currentTime;
@@ -320,7 +312,6 @@ const playCurrentTrack = () => {
             console.error('Erreur audio:', e);
         });
 
-        // Forcer le chargement
         audio.load();
 
     } catch (error) {
@@ -341,7 +332,6 @@ const updateVolume = () => {
     }
 };
 
-// Synchroniser l'audio avec l'état reçu du serveur
 const syncAudioWithState = () => {
     console.log("Synchronisation audio:", musicState.value);
 
@@ -350,20 +340,18 @@ const syncAudioWithState = () => {
         return;
     }
 
-    // Si c'est une nouvelle piste ou si l'audio n'existe pas
+
     if (!currentAudio.value ||
         currentAudio.value.src !== musicState.value.currentTrack.previewUrl) {
         playCurrentTrack();
         return;
     }
 
-    // Synchroniser la position
     const timeDiff = Math.abs(currentAudio.value.currentTime - musicState.value.currentTime);
-    if (timeDiff > 2) { // Resync si la différence est > 2 secondes
+    if (timeDiff > 2) {
         currentAudio.value.currentTime = musicState.value.currentTime;
     }
 
-    // Synchroniser play/pause
     if (musicState.value.isPlaying && currentAudio.value.paused) {
         currentAudio.value.play().catch(err => {
             console.error('Erreur de lecture audio:', err);
@@ -373,21 +361,18 @@ const syncAudioWithState = () => {
     }
 };
 
-// Mettre à jour le temps local
 const updateLocalTime = () => {
     if (currentAudio.value && musicState.value.isPlaying && !currentAudio.value.paused) {
         musicState.value.currentTime = currentAudio.value.currentTime;
     }
 };
 
-// Formatage du temps
 const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-// Récupérer l'état musical initial
 const loadMusicState = async () => {
     if (!props.activeRoomId || !isConnected.value) return;
 
@@ -404,7 +389,6 @@ const loadMusicState = async () => {
     }
 };
 
-// Écoute des événements Socket.IO
 onMounted(() => {
     console.log("MusicSidebar monté, room:", props.activeRoomId);
 
@@ -412,7 +396,6 @@ onMounted(() => {
         loadMusicState();
     }
 
-    // Écouter les changements d'état musical
     socketComposable.onMusicStateChanged((data: {
         currentTrack: Track | null;
         currentTrackIndex: number | undefined;
@@ -431,7 +414,6 @@ onMounted(() => {
         syncAudioWithState();
     });
 
-    // Écouter les mises à jour de la queue
     socketComposable.onQueueUpdated((data: {
         queue: Track[];
         currentTrackIndex?: number;
@@ -443,7 +425,6 @@ onMounted(() => {
         }
     });
 
-    // Démarrer la mise à jour régulière du temps
     progressUpdateInterval.value = window.setInterval(updateLocalTime, 1000);
 });
 
@@ -460,14 +441,12 @@ onUnmounted(() => {
     }
 });
 
-// Watch pour les changements de room
 watch(() => props.activeRoomId, (newRoomId, oldRoomId) => {
     console.log("Room changée de", oldRoomId, "vers", newRoomId);
 
     if (newRoomId && isConnected.value) {
         loadMusicState();
     } else {
-        // Reset l'état si plus de room active
         musicState.value = {
             currentTrack: null,
             currentTrackIndex: undefined,
@@ -479,7 +458,6 @@ watch(() => props.activeRoomId, (newRoomId, oldRoomId) => {
     }
 });
 
-// Watch pour les changements de connexion
 watch(isConnected, (connected) => {
     console.log("Connexion socket:", connected);
     if (connected && props.activeRoomId) {

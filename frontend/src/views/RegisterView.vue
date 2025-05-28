@@ -12,13 +12,12 @@ const router = useRouter();
 
 const register = async () => {
     try {
-        // Vérification que les mots de passe correspondent
+
         if (password.value !== confirmPassword.value) {
             error.value = 'Les mots de passe ne correspondent pas';
             return;
         }
 
-        // Vérification des champs obligatoires
         if (!username.value.trim() || !password.value.trim()) {
             error.value = 'Tous les champs sont obligatoires';
             return;
@@ -31,7 +30,6 @@ const register = async () => {
 
         if (response) {
             error.value = '';
-            // Connexion automatique après inscription
             const user = await apiService.getCurrentUser();
             const userStore = useUserStore();
             userStore.setUser(user);

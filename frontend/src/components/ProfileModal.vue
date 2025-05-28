@@ -67,7 +67,6 @@ const handleSave = () => {
     emit('save', selectedColor.value);
 };
 
-// Synchroniser la couleur sélectionnée avec celle du profil
 watch(() => props.currentUser.profileColor, (newColor) => {
     selectedColor.value = newColor;
 }, { immediate: true });
