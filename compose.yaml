@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres
-    container_name: postgres
+    container_name: postgres_chatdb
     ports:
       - "5432:5432"
     volumes:
@@ -15,7 +15,7 @@ services:
 
   adminer:
     image: adminer
-    container_name: adminer
+    container_name: adminer_chatdb
     restart: unless-stopped
     ports:
       - "8080:8080"
